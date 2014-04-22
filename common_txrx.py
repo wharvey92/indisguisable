@@ -47,5 +47,22 @@ def get_header_len():
 def get_rep():
     return 9
 
+def lpfilter(samples_in, omega_cut):
+  '''
+  A low-pass filter of frequency omega_cut.
+  '''
+  # set the filter unit sample response
+  L = 50
+  hf = numpy.sin(omega_cut*numpy.arange(-L,0))/(math.pi*numpy.arange(-L,0))
+  hf = numpy.append(hf, omega_cut)
+  hf = numpy.append(hf, numpy.sin(omega_cut*numpy.arange(1,L+1))/(math.pi*numpy.arange(1,L+1)))
+  hf[L] = omega_cut/math.pi
+  # convolve unit sample response with input samples
+  samples_out=[0]*len(samples_in)
+  for i in range(len(samples_out) - len(hf)):
+    samples_out[i] = numpy.sum(samples_in[i:i+len(hf)]*hf[::-1])
+
+  return numpy.array(samples_out)
+
 
 
