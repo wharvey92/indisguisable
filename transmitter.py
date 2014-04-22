@@ -39,7 +39,8 @@ class Transmitter:
         Return the multiplied result.
         '''
         print '\tNumber of samples being sent:', len(samples)
-        return samples * common.local_carrier(self.fc, len(samples), self.samplerate)
+        modsamples =  samples * common.local_carrier(self.fc, len(samples), self.samplerate)
+        return = common.lpfilter(mod_samples, 2*numpy.pi*fc/self.samplerate)
 
     def encode(self, databits):
         index, coded_bits = self.hamming_encoding(databits)
