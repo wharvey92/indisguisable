@@ -18,7 +18,12 @@ class Transmitter:
         Prepend the array of source bits with preamble bits
         '''
         databits_with_preamble = []
-        databits_with_preamble = numpy.append(common.set_preamble(self.silence), databits)
+        preamble = common.get_barker()
+        preamble_repeated = []
+        for x in preamble:
+            preamble_repeated = numpy.append(preamble_repeated, [x]*common.get_rep())
+        preamble_with_silence = numpy.append([0]*self.silence, preamble_repeated)
+        databits_with_preamble = numpy.append(preamble_with_silence, databits)
         print '\tSent Preamble: ', numpy.array(common.get_barker())
         return databits_with_preamble
 

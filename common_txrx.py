@@ -44,5 +44,8 @@ def set_preamble(silence):
 def get_header_len():
     return 20
 
+def get_rep():
+    return 9
+
 
 

@@ -51,10 +51,20 @@ class Receiver:
             sys.exit(1)
 
         barker = common.get_barker()
-        presamples = common.bits2samples(barker, 1.0, self.spb)
+        barker_repeated = []
+        rep = common.get_rep()
+        for x in barker:
+            barker_repeated = numpy.append(barker_repeated, [x]*rep)
+
+        presamples = common.bits2samples(barker_repeated, 1.0, self.spb)
         mod_presamples = presamples * common.local_carrier(self.fc, len(presamples), self.samplerate)
         m = self.demodulate(mod_presamples)
-        pre_offset = self.correlate(m, demod_samples[offset:offset+3*len(barker)*self.spb])
+        '''
+        p.plot(m)
+        p.plot(demod_samples[offset:offset+3*len(barker_repeated)*self.spb])
+        p.show()
+        '''
+        pre_offset = self.correlate(m, demod_samples[offset:offset+3*len(barker_repeated)*self.spb])
         return offset + pre_offset
         
     def demap_and_check(self, demod_samples, barker_start):
@@ -62,7 +72,7 @@ class Receiver:
         subsamples = self.subsample(demod_samples[barker_start:], int(spb/4), int(3*spb/4))
 
         (bits,si,snr) = self.demap(subsamples)
-        start = self.barker_check(bits)
+        start, recd_barker = self.barker_check(bits)
 
         if start >= 0:
             print '\tI think the Barker sequence starts at bit', start + barker_start/spb, \
@@ -72,10 +82,11 @@ class Receiver:
                 print '\tSNR from preamble: %.1f dB' % (10.0*math.log(snr, 10))
             else:
                 print '\tWARNING: Couldn\'t estimate SNR...'
-            blen = len(common.get_barker())
-            print '\tRecd preamble: ', recd_bits[:blen]
+            blen = common.get_rep()*len(common.get_barker())
+            print '\tRecd preamble: ', numpy.array(recd_barker, dtype=int)
             return recd_bits[blen:]
         else:
+            print 'demap and check'
             print '*** ERROR: Could not detect preamble. ***'
             print '\tIncrease volume / turn on mic / reduce noise?'
             print '\tOr is there some other synchronization bug? ***'
@@ -134,11 +145,32 @@ class Receiver:
     def barker_check(self, bits):
         barker = common.get_barker()
         barkerlen = len(barker)
-        for i in xrange(len(bits)-barkerlen):
-            if (barker == bits[i:i+len(barker)]).all():
-                return i
+        rep = common.get_rep()
+        '''
+        p.figure()
+        p.plot(xrange(len(bits[0:100])), bits[0:100], 'o-')
+        p.ylim(-0.1, 1.1)
+        p.show()
+        '''
+        cnt = range(barkerlen)
+        for i in xrange(len(bits)-rep*barkerlen):
+            #channel decoding
+            bit_in_interest = bits[i:i+rep*len(barker)]
+            recd_barker = []
+
+            for x in xrange(barkerlen):
+                block = numpy.array(bit_in_interest[rep*x:rep*(x+1)])
+                recd_barker = numpy.append(recd_barker, [1 if block.sum() >= (rep/2)+1 else 0])
+                if i == 0:
+                    cnt[x] = int(abs((barker[x]*rep - block.sum())))
+
+            if (barker == recd_barker).all():
+                print "\t%d" % i
+                print "\tBit Error in preamble: ", cnt
+                return i, recd_barker
+        print "\tBit Error in preamble: ", cnt
         # else, couldn't find preamble :(
-        return -1
+        return -1, None
 
     def demap(self, samples):
         bits = numpy.array([])
@@ -154,11 +186,14 @@ class Receiver:
         return bits, softinfo, snr
 
     def snr_subsamp(self, samples):
-
+        rep = common.get_rep()
         barker = common.get_barker()
+        barker_repeated = numpy.array([], dtype='int32')
+        for x in barker:
+            barker_repeated = numpy.append(barker_repeated, numpy.array([x]*rep,  dtype='int32'))
         samp = [ numpy.array([]), numpy.array([]) ]
-        for i in xrange(len(barker)):
-            samp[barker[i]] = numpy.append(samp[barker[i]], samples[i])
+        for i in xrange(len(barker_repeated)):
+            samp[barker_repeated[i]] = numpy.append(samp[barker_repeated[i]], samples[i])
         noise = [0.0, 0.0]
         signal = [0.0, 0.0]
         for i in xrange(2):
