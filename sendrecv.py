@@ -132,12 +132,15 @@ if __name__ == '__main__':
     if opt.bypass:
         h = [float(x) for x in opt.h.split(' ')]
         channel = bch.BypassChannel(opt.noise, opt.lag, h)
+        channel_2 = ach.AudioChannel(opt.samplerate, opt.chunksize, opt.prefill)
     else:
         channel = ach.AudioChannel(opt.samplerate, opt.chunksize, opt.prefill)
         
     # transmit the samples, and retrieve samples back from the channel
     try:
         samples_rx = channel.xmit_and_recv(mod_samples)
+        if opt.bypass:
+            samples_rx_2 = channel_2.xmit_and_recv(mod_samples)
     except ZeroDivisionError:
         # should only happen for audio channel
         print "I didn't get any samples; is your microphone or speaker OFF?"
