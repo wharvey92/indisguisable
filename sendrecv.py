@@ -91,10 +91,6 @@ if __name__ == '__main__':
         parser.add_option("-E", "--encrypt", action="store_true", dest="encrypt",
                             default=False, help="use XOR with key for encryption")
 
-        # bit error pattern
-        parser.add_option("-B", "--biterror", action="store_true", dest="biterror",
-                            default=False, help="show bit error patterns after communication")
-
         (opt,args) = parser.parse_args()
 
         
@@ -122,7 +118,7 @@ if __name__ == '__main__':
     # instantiate and run the transmitter block
     xmitter = Transmitter(fc, opt.samplerate, opt.one, opt.spb, opt.silence, opt.cc_len)
     if opt.cc_len!=0:
-        databits = xmitter.encode(databits)
+        databits = xmitter.encode(databits, opt.cc_len)
     databits_with_preamble = xmitter.add_preamble(databits)
     samples = xmitter.bits_to_samples(databits_with_preamble)
     mod_samples = xmitter.modulate(samples)
@@ -172,7 +168,3 @@ if __name__ == '__main__':
         len_mod = len(mod_samples) - opt.spb*opt.silence 
         len_demod = len_mod - opt.spb*(len(src_payload) - len(rcd_payload))
         plot_graphs(mod_samples, samples_rx[barker_start:], demod_samples[barker_start:barker_start + len_demod], opt.spb, src.srctype, opt.silence)
-
-    if opt.biterror:
-        plot_bitflips(src_bits, sink_bits, samples, demod_samples)
-        
